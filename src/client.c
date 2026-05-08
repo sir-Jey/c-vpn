@@ -86,6 +86,7 @@ int main(void)
     sigemptyset(&mask.sa_mask);
     mask.sa_handler = sigint_handler;
     mask.sa_flags = 0;
+    
     if (sigaction(SIGINT, &mask, NULL) == -1)
         exit_error("sigaction");
 
@@ -95,7 +96,8 @@ int main(void)
     {
         ret = poll(fds, 2, -1);
         if (ret < 0) {
-            if (errno == EINTR) continue;
+            if (errno == EINTR) 
+                continue;
             exit_error("poll");
         }
 
@@ -103,7 +105,8 @@ int main(void)
         if (fds[0].revents & POLLIN)
         {
             ssize_t n = recv(utun_fd, packet, sizeof(packet), 0);
-            if (n == -1) exit_error("recv tun");
+            if (n == -1) 
+                exit_error("recv tun");
 
             if (handle_icmp_echo(packet, (int)n)) {
                 write(utun_fd, packet, n);
@@ -117,10 +120,20 @@ int main(void)
             unsigned long long ciphertext_len;
 
             crypto_aead_xchacha20poly1305_ietf_encrypt(
-                ciphertext, &ciphertext_len,
-                packet, n, NULL, 0, NULL, nonce, key);
+                ciphertext, 
+                &ciphertext_len,
+                packet, 
+                n, 
+                NULL, 
+                0, 
+                NULL, 
+                nonce, 
+                key);
 
-            sendto(sfd, nonce, sizeof(nonce), 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr));
+            if (sendto(sfd, nonce, sizeof(nonce), 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) == -1) {
+                log_error("sendto nonce");
+            }
+            
             if (sendto(sfd, ciphertext, ciphertext_len, 0,
                        (struct sockaddr *)&remote_addr, sizeof(remote_addr)) == -1)
                 log_error("sendto ciphertext");
@@ -136,11 +149,14 @@ int main(void)
             unsigned char ciphertext[4096];
             unsigned char decrypted[4096];
             unsigned long long decrypted_len;
+            
             ssize_t n;
 
-            recvfrom(sfd, nonce, sizeof(nonce), 0, NULL, NULL);
+            if (recvfrom(sfd, nonce, sizeof(nonce), 0, NULL, NULL) == -1)
+                    log_error("recvfrom nonce");
             n = recvfrom(sfd, ciphertext, sizeof(ciphertext), 0, NULL, NULL);
-            if (n < 0) continue;
+            if (n < 0) 
+                continue;
 
             tr_stat.udp_packs_rec++;
             tr_stat.bytes_rec += n;
@@ -160,17 +176,22 @@ int main(void)
     return 0;
 }
 
-/* ==================== ICMP Echo Reply ==================== */
+/* ICMP Echo Reply */
 uint16_t ip_checksum(void *data, int len)
 {
     uint32_t sum = 0;
     uint16_t *ptr = data;
+    
     while (len > 1) {
         sum += *ptr++;
         len -= 2;
     }
-    if (len == 1) sum += *(uint8_t*)ptr;
-    while (sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
+    
+    if (len == 1) 
+        sum += *(uint8_t*)ptr;
+    while (sum >> 16) 
+        sum = (sum & 0xFFFF) + (sum >> 16);
+    
     return ~sum;
 }
 
@@ -179,14 +200,18 @@ int handle_icmp_echo(unsigned char *packet, int len)
     struct ip *ip = (struct ip*)packet;
     int ip_len = ip->ip_hl * 4;
 
-    if (ip->ip_p != IPPROTO_ICMP) return 0;
+    if (ip->ip_p != IPPROTO_ICMP) 
+        return 0;
 
     struct icmp *icmp = (struct icmp*)(packet + ip_len);
-    if (icmp->icmp_type != ICMP_ECHO) return 0;
+    
+    if (icmp->icmp_type != ICMP_ECHO) 
+        return 0;
 
     printf("ICMP echo request от %s\n", inet_ntoa(ip->ip_src));
 
     struct in_addr tmp = ip->ip_src;
+    
     ip->ip_src = ip->ip_dst;
     ip->ip_dst = tmp;
 
@@ -201,7 +226,6 @@ int handle_icmp_echo(unsigned char *packet, int len)
     return 1;
 }
 
-/* ==================== Конфиг ==================== */
 void parse_line(const char *line)
 {
     if (strstr(line, "#")) return;
@@ -217,18 +241,21 @@ void parse_line(const char *line)
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
         if (p) strcpy(remote_ip, p + 1);
     }
+    
     if (strstr(low, "remote_port")) {
         space = strrchr(low, ' ');
         eq = strrchr(low, '=');
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
         if (p) remote_port = atoi(p + 1);
     }
+    
     if (strstr(low, "tun_ip")) {
         space = strrchr(low, ' ');
         eq = strrchr(low, '=');
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
         if (p) strcpy(tun_ip, p + 1);
     }
+    
     if (strstr(low, "server_tun_ip")) {
         space = strrchr(low, ' ');
         eq = strrchr(low, '=');
