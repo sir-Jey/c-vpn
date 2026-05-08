@@ -5,22 +5,38 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <wchar.h>
+#include <stdint.h>
+#include <threads.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <sys/ipc.h>
 #include <sys/kern_control.h>
 #include <sys/sys_domain.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/ipc.h>
+#include <syslog.h>
+#include <dirent.h>
 #include <net/if.h>
 #include <net/if_utun.h>
 #include <netinet/in.h>
+#include <netpacket/packet.h>
+#include <net/ethernet.h>
 #include <arpa/inet.h>
 #include <poll.h>
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
 #include <time.h>
+#include <utime.h>
 #include <sodium.h>
-#include <fcntl.h>          
+#include <fcntl.h> 
+#include <limits.h>
+#include <locale.h>
+#include <sodium/randombytes_internal_random.h>
 
 #define BUF_SIZ (1024 * 4)
 #define KEY_SIZ crypto_aead_xchacha20poly1305_ietf_KEYBYTES
