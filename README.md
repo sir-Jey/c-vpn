@@ -1,4 +1,3 @@
-```markdown
 # VPN Server & Client
 
 This project implements a full VPN tunnel between a client and a server.  
@@ -9,7 +8,8 @@ The server accepts connections from multiple clients, creates a separate `utun` 
 
 ---
 
-<img width="990" height="521" alt="Screenshot 2026-05-08 at 18 08 07" src="https://github.com/user-attachments/assets/85a79276-b303-46b0-bf67-d5885082229c" />
+<img width="789" height="336" alt="Снимок экрана 2026-05-08 в 18 40 27" src="https://github.com/user-attachments/assets/2a704e47-39b8-40f5-8110-169d9aeea5da" />
+
 
 ---
 
