@@ -8,11 +8,6 @@ The server accepts connections from multiple clients, creates a separate `utun` 
 
 ---
 
-<img width="789" height="336" alt="Снимок экрана 2026-05-08 в 18 40 27" src="https://github.com/user-attachments/assets/2a704e47-39b8-40f5-8110-169d9aeea5da" />
-
-
----
-
 ## How It Works
 
 The client opens a `utun` interface, assigns it an IP address (e.g., `10.0.0.2`), and sends all traffic through an encrypted UDP tunnel to the server.  
