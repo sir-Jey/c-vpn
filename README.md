@@ -191,7 +191,8 @@ ping 10.0.0.1
 
 You should receive replies.
 
-<img width="443" height="238" alt="Screenshot 2026-05-08 at 18 44 48" src="https://github.com/user-attachments/assets/af830c45-ecd1-45cf-9d69-50798f1c2788" />
+<img width="500" height="279" alt="Снимок экрана 2026-05-08 в 18 52 30" src="https://github.com/user-attachments/assets/f6707ec6-e97d-4ed2-b4c1-46b975b00e47" />
+
 
 ---
 
