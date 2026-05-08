@@ -1,7 +1,7 @@
 #include "client.h"
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
-#include <fcntl.h>
+#include <sys/fcntl.h>
 
 char remote_ip[INET_ADDRSTRLEN] = REMOTE_IP;
 int remote_port = REMOTE_PORT_DEFAULT;
@@ -28,7 +28,8 @@ int main(void)
     unsigned char *key = give_key();
 
     utun_fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
-    if (utun_fd == -1) exit_error("socket utun");
+    if (utun_fd == -1) 
+        exit_error("socket utun");
 
     memset(&ctlInfo, 0, sizeof(ctlInfo));
     strncpy(ctlInfo.ctl_name, "com.apple.net.utun_control", sizeof(ctlInfo.ctl_name)-1);
@@ -240,21 +241,28 @@ void parse_line(const char *line)
 
 void load_config(const char *filename)
 {
-    int fd = open(filename, O_RDONLY);
-    if (fd == -1) {
+    int fd;
+    char buf[BUF_SIZ];
+    ssize_t bytes;
+    char line[BUF_SIZ];
+    int i;
+    int pos;
+    
+    fd = open(filename, O_RDONLY);
+    if (fd == -1) 
+    {
         log_error("open config");
         return;
     }
 
-    char buf[BUF_SIZ];
-    ssize_t bytes = read(fd, buf, sizeof(buf));
+    bytes = read(fd, buf, sizeof(buf));
     close(fd);
     if (bytes <= 0) return;
 
-    char line[BUF_SIZ];
-    int pos = 0;
-    for (int i = 0; i < bytes; i++) {
-        if (buf[i] == '\n') {
+    pos = 0;
+    for (i = 0; i < bytes; i++) {
+        if (buf[i] == '\n') 
+        {
             line[pos] = 0;
             parse_line(line);
             pos = 0;
@@ -262,7 +270,8 @@ void load_config(const char *filename)
             line[pos++] = buf[i];
         }
     }
-    if (pos > 0) {
+    if (pos > 0) 
+    {
         line[pos] = 0;
         parse_line(line);
     }
