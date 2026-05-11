@@ -225,11 +225,13 @@ int find_utun_by_addr(struct sockaddr_in cliaddr)
 void rebuild_fds(void)
 {
     int n = 0;
+    int i;
+    
     fds[n].fd = udp_fd;
     fds[n].events = POLLIN;
     n++;
 
-    for (int i = 0; i <= peer_n; i++) {
+    for (i = 0; i <= peer_n; i++) {
         if (!peers[i].used) continue;
         fds[n].fd = peers[i].utun_fd;
         fds[n].events = POLLIN;
@@ -247,7 +249,9 @@ void remove_peer(int fd)
             break;
         }
     }
-    if (idx == -1) return;
+    if (idx == -1) {
+        return;
+    }
 
     close(peers[idx].utun_fd);
     peers[idx].used = 0;
@@ -255,48 +259,79 @@ void remove_peer(int fd)
     for (int j = idx; j < peer_n; j++) {
         peers[j] = peers[j+1];
     }
+    
     peer_n--;
     rebuild_fds();
 }
 
 void parse_line(const char *line)
 {
-    if (strstr(line, "#")) return;
-    char *p, *space, *eq;
+    if (strstr(line, "#")) 
+        return;
+    
+    char *p;
+    char *space; 
+    char *eq;
+    
     const char *low = tolower_str(line);
-    if (!low) return;
+    
+    if (!low) {
+        return;
+    }
 
     if (strstr(low, "udp_port")) {
-        space = strrchr(low, ' '); eq = strrchr(low, '=');
+        space = strrchr(low, ' '); 
+        eq = strrchr(low, '=');
+        
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
-        if (p) udp_port = atoi(p+1);
+        if (p) {
+            udp_port = atoi(p+1);
+        }
     }
+    
     if (strstr(low, "tun_ip")) {
-        space = strrchr(low, ' '); eq = strrchr(low, '=');
+        space = strrchr(low, ' '); 
+        eq = strrchr(low, '=');
+        
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
-        if (p) strcpy(tun_ip, p+1);
+        if (p) { 
+            strcpy(tun_ip, p+1);
+        }
     }
+    
     if (strstr(low, "max_clients")) {
-        space = strrchr(low, ' '); eq = strrchr(low, '=');
+        space = strrchr(low, ' '); 
+        eq = strrchr(low, '=');
+        
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
-        if (p) max_clients = atoi(p+1);
+        if (p) {
+            max_clients = atoi(p+1);
+        }
     }
+    
     free((void*)low);
 }
 
 void load_config(const char *filename)
 {
     int fd = open(filename, O_RDONLY);
+    int i;
+    int pos;
+    char line[BUF_SIZ];
+    ssize_t bytes;
+    
     if (fd == -1) { log_error("open config"); return; }
 
     char buf[BUF_SIZ];
-    ssize_t bytes = read(fd, buf, sizeof(buf));
+    bytes = read(fd, buf, sizeof(buf));
     close(fd);
-    if (bytes <= 0) return;
+    
+    if (bytes <= 0) {
+        return;
+    }
 
-    char line[BUF_SIZ];
-    int pos = 0;
-    for (int i = 0; i < bytes; i++) {
+    pos = 0;
+    for (i = 0; i < bytes; i++) {
         if (buf[i] == '\n') {
             line[pos] = 0;
             parse_line(line);
