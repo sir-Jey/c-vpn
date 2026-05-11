@@ -24,7 +24,10 @@ void sigint_handler(int signo)
     (void)signo;
 
     static int already_handled = 0;
-    if (already_handled) return;
+    if (already_handled) {
+        return;
+    }
+    
     already_handled = 1;
 
     int saved_errno = errno;
@@ -43,22 +46,32 @@ void sigint_handler(int signo)
 const char *tolower_str(const char *line)
 {
     unsigned int n = strlen(line);
-    if (n == 0) return NULL;
+    if (n == 0) {
+        return NULL;
+    }
     char *low_line = malloc(n + 1);
-    if (!low_line) exit_error("malloc");
+    if (!low_line) {
+        exit_error("malloc");
+    }
+    
     for (unsigned int i = 0; i < n; i++)
         low_line[i] = tolower(line[i]);
     low_line[n] = 0;
+    
     return low_line;
 }
 
 unsigned char *give_key(void)
 {
     unsigned char *key = malloc(KEY_SIZ);
-    if (!key) exit_error("malloc key");
+    if (!key) {
+        exit_error("malloc key");
+    }
 
     FILE *f = fopen(VPN_KEY_FILE, "rb");
-    if (!f) exit_error("cannot open vpn.key");
+    if (!f) {
+        exit_error("cannot open vpn.key");
+    }
 
     if (fread(key, KEY_SIZ, 1, f) != 1)
         exit_error("cannot read key");
