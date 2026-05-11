@@ -18,19 +18,24 @@ int main(int argc, char *argv[])
     unsigned char buf[65535];
     struct sigaction mask;
 
-    if (sodium_init() < 0) exit_error("sodium_init");
+    if (sodium_init() < 0) {
+        exit_error("sodium_init");
+    }
+    
     unsigned char *key = give_key();
 
-    if ((udp_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+    if ((udp_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
         exit_error("socket");
+    }
 
     memset(&udp_addr, 0, sizeof(udp_addr));
     udp_addr.sin_family = AF_INET;
     udp_addr.sin_port = htons(udp_port);
     udp_addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(udp_fd, (struct sockaddr*)&udp_addr, sizeof(udp_addr)) < 0)
+    if (bind(udp_fd, (struct sockaddr*)&udp_addr, sizeof(udp_addr)) < 0) {
         exit_error("bind");
+    }
 
     printf("UDP listens to 0.0.0.0:%d\n\n", udp_port);
 
@@ -44,21 +49,29 @@ int main(int argc, char *argv[])
     sigemptyset(&mask.sa_mask);
     mask.sa_handler = sigint_handler;
     mask.sa_flags = 0;
-    if (sigaction(SIGINT, &mask, NULL) == -1)
+    if (sigaction(SIGINT, &mask, NULL) == -1) {
         exit_error("sigaction");
+    }
 
     load_config(VPN_SERV_CONF_FILE);
 
     for (;;)
     {
         int ret = poll(fds, nfds+1, -1);
-        if (!running) exit(EXIT_SUCCESS);
+        if (!running) { 
+            exit(EXIT_SUCCESS);
+        }
+        
         if (ret < 0) {
-            if (errno == EINTR) continue;
-            else exit_error("poll");
+            if (errno == EINTR) {
+                continue;
+            } else {
+                exit_error("poll");
+            }
         }
 
-        if (fds[0].fd == udp_fd && fds[0].revents & POLLIN) {
+        if (fds[0].fd == udp_fd && fds[0].revents & POLLIN) 
+        {
             struct sockaddr_in client_addr;
             socklen_t client_len = sizeof(client_addr);
             unsigned char nonce[crypto_aead_xchacha20poly1305_ietf_NPUBBYTES];
@@ -83,12 +96,14 @@ int main(int argc, char *argv[])
             unsigned char decrypted[65535];
             unsigned long long decrypted_len;
             if (crypto_aead_xchacha20poly1305_ietf_decrypt(
-                decrypted, &decrypted_len, NULL, ciphertext, n, NULL, 0, nonce, key) != 0) {
+                decrypted, &decrypted_len, NULL, ciphertext, n, NULL, 0, nonce, key) != 0) 
+            {
                 log_error("decryption failed");
                 continue;
             }
 
-            if (check_new_cli(client_addr) && nfds <= max_clients) {
+            if (check_new_cli(client_addr) && nfds <= max_clients) 
+            {
                 printf("new client! CREATE UTUN\n");
                 utun_fd = create_utun_fd();
                 if (utun_fd == -1) exit(EXIT_SUCCESS);
@@ -101,7 +116,9 @@ int main(int argc, char *argv[])
                 ++nfds;
                 fds[nfds].fd = utun_fd;
                 fds[nfds].events = POLLIN;
-            } else {
+            } 
+            else 
+            {
                 utun_fd = find_utun_by_addr(client_addr);
                 if (utun_fd == -1) {
                     fprintf(stderr, "the tunnel descriptor (utun) was not found at the address\n");
@@ -115,16 +132,23 @@ int main(int argc, char *argv[])
             }
         }
 
-        for (int i = 1; i <= nfds; i++) {   
-            if (!(fds[i].revents & POLLIN)) continue;
+        for (int i = 1; i <= nfds; i++) 
+        {   
+            if (!(fds[i].revents & POLLIN)) {
+                continue;
+            }
+            
             int found = -1;
-            for (int j = 0; j <= peer_n; j++) {
+            for (int j = 0; j <= peer_n; j++) 
+            {
                 if (fds[i].fd == peers[j].utun_fd) {
                     found = j;
                     break;
                 }
             }
-            if (found == -1) continue;
+            if (found == -1) {
+                continue;
+            }
 
             ssize_t n = read(fds[i].fd, buf, sizeof(buf));
             if (n < 0) {
@@ -156,8 +180,9 @@ int main(int argc, char *argv[])
 int check_new_cli(struct sockaddr_in cliaddr)
 {
     for (int i = 0; i <= peer_n; i++) {
-        if (cliaddr.sin_addr.s_addr == peers[i].addr.sin_addr.s_addr)
+        if (cliaddr.sin_addr.s_addr == peers[i].addr.sin_addr.s_addr) {
             return 0;
+        }
     }
     return 1;
 }
@@ -171,7 +196,9 @@ int create_utun_fd(void)
 
     for (u = 0; u < 100; u++) {
         fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
-        if (fd < 0) continue;
+        if (fd < 0) {
+            continue;
+        }
 
         struct ctl_info info;
         memset(&info, 0, sizeof(info));
@@ -190,6 +217,7 @@ int create_utun_fd(void)
             utun_fd = fd;
             break;
         }
+        
         close(fd);
     }
 
@@ -201,6 +229,7 @@ int create_utun_fd(void)
     ifname_len = IFNAMSIZ;
     getsockopt(utun_fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &ifname_len);
     printf("UTUN interface: %s\n", ifname);
+    
     return utun_fd;
 }
 
@@ -216,9 +245,11 @@ void set_ifconfig_addr(void)
 int find_utun_by_addr(struct sockaddr_in cliaddr)
 {
     for (int i = 0; i <= peer_n; i++) {
-        if (peers[i].used && peers[i].addr.sin_addr.s_addr == cliaddr.sin_addr.s_addr)
+        if (peers[i].used && peers[i].addr.sin_addr.s_addr == cliaddr.sin_addr.s_addr) {
             return peers[i].utun_fd;
+        }
     }
+    
     return -1;
 }
 
@@ -232,7 +263,10 @@ void rebuild_fds(void)
     n++;
 
     for (i = 0; i <= peer_n; i++) {
-        if (!peers[i].used) continue;
+        if (!peers[i].used) {
+            continue;
+        }
+        
         fds[n].fd = peers[i].utun_fd;
         fds[n].events = POLLIN;
         n++;
@@ -266,8 +300,9 @@ void remove_peer(int fd)
 
 void parse_line(const char *line)
 {
-    if (strstr(line, "#")) 
+    if (strstr(line, "#")) {
         return;
+    }
     
     char *p;
     char *space; 
