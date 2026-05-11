@@ -235,7 +235,7 @@ void rebuild_fds(void)
         fds[n].events = POLLIN;
         n++;
     }
-    nfds = n - 1;   // исправлено
+    nfds = n-1;
 }
 
 void remove_peer(int fd)
