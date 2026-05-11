@@ -22,20 +22,23 @@ int main(void)
     struct sigaction mask;
     int ret;
 
-    if (sodium_init() < 0) 
+    if (sodium_init() < 0) {
       exit_error("sodium_init");
+    }
   
     unsigned char *key = give_key();
 
     utun_fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
-    if (utun_fd == -1) 
+    if (utun_fd == -1) {
         exit_error("socket utun");
+    }
 
     memset(&ctlInfo, 0, sizeof(ctlInfo));
     strncpy(ctlInfo.ctl_name, "com.apple.net.utun_control", sizeof(ctlInfo.ctl_name)-1);
 
-    if (ioctl(utun_fd, CTLIOCGINFO, &ctlInfo) == -1)
+    if (ioctl(utun_fd, CTLIOCGINFO, &ctlInfo) == -1) {
         exit_error("ioctl");
+    }
 
     memset(&sc, 0, sizeof(sc));
     sc.sc_family = AF_SYS_CONTROL;
@@ -43,12 +46,14 @@ int main(void)
     sc.sc_id = ctlInfo.ctl_id;
     sc.sc_len = sizeof(sc);
 
-    if (connect(utun_fd, (struct sockaddr *)&sc, sizeof(sc)) == -1)
+    if (connect(utun_fd, (struct sockaddr *)&sc, sizeof(sc)) == -1) {
         exit_error("connect utun");
+    }
 
     ifname_len = IFNAMSIZ;
-    if (getsockopt(utun_fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &ifname_len) == -1)
+    if (getsockopt(utun_fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &ifname_len) == -1) {
         exit_error("getsockopt");
+    }
 
     printf("utun %s create!\n", ifname);
 
@@ -56,15 +61,18 @@ int main(void)
     system(cmd);
 
     sfd = socket(PF_INET, SOCK_DGRAM, 0);
-    if (sfd == -1) exit_error("socket udp");
+    if (sfd == -1) {
+        exit_error("socket udp");
+    }
 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(12345);
     inet_aton("0.0.0.0", &addr.sin_addr);
 
-    if (bind(sfd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+    if (bind(sfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
         exit_error("bind");
+    }
 
     printf("the udp socket is bound to the address 0.0.0.0:12345\n\n");
 
@@ -87,26 +95,31 @@ int main(void)
     mask.sa_handler = sigint_handler;
     mask.sa_flags = 0;
     
-    if (sigaction(SIGINT, &mask, NULL) == -1)
+    if (sigaction(SIGINT, &mask, NULL) == -1) {
         exit_error("sigaction");
+    }
 
     load_config(VPN_CLI_CONF_FILE);
 
     for (;;)
     {
         ret = poll(fds, 2, -1);
-        if (ret < 0) {
-            if (errno == EINTR) 
+        if (ret < 0) 
+        {
+            if (errno == EINTR) {
                 continue;
-            exit_error("poll");
+            } else {
+                exit_error("poll");
+            }
         }
 
         /* TUN - > Network */
         if (fds[0].revents & POLLIN)
         {
             ssize_t n = recv(utun_fd, packet, sizeof(packet), 0);
-            if (n == -1) 
+            if (n == -1) {
                 exit_error("recv tun");
+            }
 
             if (handle_icmp_echo(packet, (int)n)) {
                 write(utun_fd, packet, n);
@@ -152,28 +165,33 @@ int main(void)
             
             ssize_t n;
 
-            if (recvfrom(sfd, nonce, sizeof(nonce), 0, NULL, NULL) == -1)
+            if (recvfrom(sfd, nonce, sizeof(nonce), 0, NULL, NULL) == -1) {
                     log_error("recvfrom nonce");
+            }
+            
             n = recvfrom(sfd, ciphertext, sizeof(ciphertext), 0, NULL, NULL);
-            if (n < 0) 
+            if (n < 0) {
                 continue;
+            }
 
             tr_stat.udp_packs_rec++;
             tr_stat.bytes_rec += n;
 
             if (crypto_aead_xchacha20poly1305_ietf_decrypt(
                 decrypted, &decrypted_len, NULL,
-                ciphertext, n, NULL, 0, nonce, key) != 0) {
+                ciphertext, n, NULL, 0, nonce, key) != 0) 
+            {
                 continue;
             }
 
-            if (send(utun_fd, decrypted, decrypted_len, 0) == -1)
+            if (send(utun_fd, decrypted, decrypted_len, 0) == -1) {
                 log_error("send to tun");
+            }
         }
     }
 
     free(key);
-    return 0;
+    exit(EXIT_SUCCESS);
 }
 
 /* ICMP Echo Reply */
@@ -182,15 +200,19 @@ uint16_t ip_checksum(void *data, int len)
     uint32_t sum = 0;
     uint16_t *ptr = data;
     
-    while (len > 1) {
+    while (len > 1) 
+    {
         sum += *ptr++;
         len -= 2;
     }
     
-    if (len == 1) 
+    if (len == 1) {
         sum += *(uint8_t*)ptr;
-    while (sum >> 16) 
+    }
+    
+    while (sum >> 16) {
         sum = (sum & 0xFFFF) + (sum >> 16);
+    }
     
     return ~sum;
 }
@@ -200,13 +222,15 @@ int handle_icmp_echo(unsigned char *packet, int len)
     struct ip *ip = (struct ip*)packet;
     int ip_len = ip->ip_hl * 4;
 
-    if (ip->ip_p != IPPROTO_ICMP) 
+    if (ip->ip_p != IPPROTO_ICMP) {
         return 0;
+    }
 
     struct icmp *icmp = (struct icmp*)(packet + ip_len);
     
-    if (icmp->icmp_type != ICMP_ECHO) 
+    if (icmp->icmp_type != ICMP_ECHO) {
         return 0;
+    }
 
     printf("ICMP echo request от %s\n", inet_ntoa(ip->ip_src));
 
@@ -228,39 +252,59 @@ int handle_icmp_echo(unsigned char *packet, int len)
 
 void parse_line(const char *line)
 {
-    if (strstr(line, "#")) return;
+    if (strstr(line, "#")) {
+        return;
+    }
 
     const char *low = tolower_str(line);
-    if (!low) return;
+    
+    if (!low) {
+        return;
+    }
 
-    char *p, *space, *eq;
+    char *p;
+    char *space; 
+    char *eq;
 
-    if (strstr(low, "remote_ip")) {
+    if (strstr(low, "remote_ip")) 
+    {
         space = strrchr(low, ' ');
         eq = strrchr(low, '=');
+        
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
-        if (p) strcpy(remote_ip, p + 1);
+        if (p) {
+            strcpy(remote_ip, p + 1);
+        }
     }
     
     if (strstr(low, "remote_port")) {
         space = strrchr(low, ' ');
         eq = strrchr(low, '=');
+        
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
-        if (p) remote_port = atoi(p + 1);
+        if (p) {
+            remote_port = atoi(p + 1);
+        }
     }
     
     if (strstr(low, "tun_ip")) {
         space = strrchr(low, ' ');
         eq = strrchr(low, '=');
+        
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
-        if (p) strcpy(tun_ip, p + 1);
+        if (p) {
+            strcpy(tun_ip, p + 1);
+        }
     }
     
     if (strstr(low, "server_tun_ip")) {
         space = strrchr(low, ' ');
         eq = strrchr(low, '=');
+        
         p = (space && eq) ? (space > eq ? space : eq) : (space ? space : eq);
-        if (p) strcpy(server_tun_ip, p + 1);
+        if (p) {
+            strcpy(server_tun_ip, p + 1);
+        }
     }
 
     free((void*)low);
@@ -284,7 +328,10 @@ void load_config(const char *filename)
 
     bytes = read(fd, buf, sizeof(buf));
     close(fd);
-    if (bytes <= 0) return;
+    
+    if (bytes <= 0) {
+        return;
+    }
 
     pos = 0;
     for (i = 0; i < bytes; i++) {
